@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+
 import {
     ArrowDown,
     BrainCircuit,
@@ -7,9 +8,11 @@ import {
     ShieldCheck,
 } from "lucide-react";
 
+import heroImage from "../assets/image1.jpg";
+
 
 function HeroSection() {
-    // Move directly to the prediction section
+    // Scroll to prediction section
     const goToPrediction = () => {
         document
             .getElementById("prediction")
@@ -19,7 +22,7 @@ function HeroSection() {
     };
 
 
-    // Move to analytical insights
+    // Scroll to insights section
     const goToInsights = () => {
         document
             .getElementById("insights")
@@ -35,6 +38,43 @@ function HeroSection() {
             className="relative flex min-h-screen items-center overflow-hidden pt-24"
         >
 
+            {/* Traffic image background */}
+            <motion.div
+                initial={{
+                    scale: 1.05,
+                    opacity: 0,
+                }}
+                animate={{
+                    scale: 1,
+                    opacity: 1,
+                }}
+                transition={{
+                    duration: 1.4,
+                }}
+                className="absolute inset-0"
+            >
+                <img
+                    src={heroImage}
+                    alt="Urban traffic"
+                    className="h-full w-full object-cover"
+                />
+            </motion.div>
+
+
+            {/* Light dark overlay - keeps image visible */}
+            <div className="absolute inset-0 bg-slate-950/50" />
+
+
+            {/* Darker only behind the text area */}
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-950/35 to-transparent" />
+
+
+            {/* Soft bottom fade into the next section */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-950/70" />
+
+            <div className="absolute inset-0 bg-cyan-950/5" />
+
+
             {/* Background grid */}
             <div
                 className="absolute inset-0 opacity-[0.05]"
@@ -46,9 +86,9 @@ function HeroSection() {
             />
 
 
-            {/* Animated background lights */}
+            {/* Animated light effect */}
             <motion.div
-                className="absolute left-[5%] top-[20%] h-80 w-80 rounded-full bg-cyan-500/20 blur-3xl"
+                className="absolute left-[5%] top-[20%] h-80 w-80 rounded-full bg-cyan-500/15 blur-3xl"
                 animate={{
                     x: [0, 70, 0],
                     y: [0, 40, 0],
@@ -59,8 +99,9 @@ function HeroSection() {
                 }}
             />
 
+
             <motion.div
-                className="absolute bottom-[10%] right-[5%] h-96 w-96 rounded-full bg-blue-600/20 blur-3xl"
+                className="absolute bottom-[10%] right-[5%] h-96 w-96 rounded-full bg-blue-600/15 blur-3xl"
                 animate={{
                     x: [0, -50, 0],
                     y: [0, -40, 0],
@@ -72,9 +113,10 @@ function HeroSection() {
             />
 
 
+            {/* Main hero content */}
             <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-16 px-6 py-20 lg:grid-cols-2 lg:px-10">
 
-                {/* Hero text */}
+                {/* Left content */}
                 <motion.div
                     initial={{
                         opacity: 0,
@@ -89,7 +131,8 @@ function HeroSection() {
                     }}
                 >
 
-                    <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-300">
+                    {/* Badge */}
+                    <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-950/50 px-4 py-2 text-sm text-cyan-300 backdrop-blur-md">
 
                         <ShieldCheck className="h-4 w-4" />
 
@@ -98,7 +141,8 @@ function HeroSection() {
                     </div>
 
 
-                    <h1 className="max-w-3xl text-5xl font-bold leading-[1.08] tracking-tight sm:text-6xl lg:text-7xl">
+                    {/* Main title */}
+                    <h1 className="max-w-3xl text-5xl font-bold leading-[1.08] tracking-tight text-white sm:text-6xl lg:text-7xl">
 
                         Smarter Traffic
 
@@ -109,7 +153,8 @@ function HeroSection() {
                     </h1>
 
 
-                    <p className="mt-7 max-w-xl text-lg leading-8 text-slate-400">
+                    {/* Description */}
+                    <p className="mt-7 max-w-xl text-lg leading-8 text-slate-300">
 
                         A machine learning powered decision-support system
                         that predicts hourly traffic volume using time,
@@ -118,7 +163,7 @@ function HeroSection() {
                     </p>
 
 
-                    {/* Main actions */}
+                    {/* Main buttons */}
                     <div className="mt-9 flex flex-wrap gap-4">
 
                         <motion.button
@@ -131,9 +176,11 @@ function HeroSection() {
                             onClick={goToPrediction}
                             className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 px-6 py-4 font-semibold text-slate-950 shadow-lg shadow-cyan-500/20"
                         >
+
                             <Gauge className="h-5 w-5" />
 
                             Predict Traffic
+
                         </motion.button>
 
 
@@ -145,17 +192,19 @@ function HeroSection() {
                                 scale: 0.97,
                             }}
                             onClick={goToInsights}
-                            className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-4 font-medium text-white backdrop-blur transition hover:bg-white/10"
+                            className="flex items-center gap-2 rounded-xl border border-white/15 bg-slate-950/50 px-6 py-4 font-medium text-white backdrop-blur-md transition hover:bg-white/10"
                         >
+
                             Explore Insights
 
                             <ArrowDown className="h-4 w-4" />
+
                         </motion.button>
 
                     </div>
 
 
-                    {/* Key system capabilities */}
+                    {/* System capabilities */}
                     <div className="mt-12 flex flex-wrap gap-10">
 
                         <div>
@@ -163,7 +212,7 @@ function HeroSection() {
                                 Hourly
                             </p>
 
-                            <p className="mt-1 text-sm text-slate-500">
+                            <p className="mt-1 text-sm text-slate-400">
                                 Traffic Forecasts
                             </p>
                         </div>
@@ -174,7 +223,7 @@ function HeroSection() {
                                 Weather
                             </p>
 
-                            <p className="mt-1 text-sm text-slate-500">
+                            <p className="mt-1 text-sm text-slate-400">
                                 Aware Predictions
                             </p>
                         </div>
@@ -185,7 +234,7 @@ function HeroSection() {
                                 Early
                             </p>
 
-                            <p className="mt-1 text-sm text-slate-500">
+                            <p className="mt-1 text-sm text-slate-400">
                                 Decision Support
                             </p>
                         </div>
@@ -195,7 +244,7 @@ function HeroSection() {
                 </motion.div>
 
 
-                {/* Animated traffic visualization */}
+                {/* Right traffic intelligence card */}
                 <motion.div
                     initial={{
                         opacity: 0,
@@ -212,33 +261,37 @@ function HeroSection() {
                     className="relative"
                 >
 
-                    <div className="relative mx-auto max-w-lg rounded-[2rem] border border-white/10 bg-white/[0.05] p-7 shadow-2xl backdrop-blur-xl">
+                    <div className="relative mx-auto max-w-lg rounded-[2rem] border border-white/15 bg-slate-950/60 p-7 shadow-2xl backdrop-blur-xl">
 
-                        {/* Dashboard header */}
+                        {/* Card header */}
                         <div className="flex items-center justify-between">
 
                             <div>
-                                <p className="text-sm text-slate-500">
+
+                                <p className="text-sm text-slate-400">
                                     Smart Mobility Network
                                 </p>
 
-                                <p className="mt-1 font-semibold">
+                                <p className="mt-1 font-semibold text-white">
                                     Traffic Intelligence
                                 </p>
+
                             </div>
 
 
                             <div className="rounded-xl bg-cyan-400/10 p-3">
+
                                 <BrainCircuit className="h-6 w-6 text-cyan-300" />
+
                             </div>
 
                         </div>
 
 
                         {/* Animated road */}
-                        <div className="relative mt-8 h-72 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/70">
+                        <div className="relative mt-8 h-72 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/80">
 
-                            <div className="absolute left-1/2 top-0 h-full w-32 -translate-x-1/2 bg-slate-800">
+                            <div className="absolute left-1/2 top-0 h-full w-32 -translate-x-1/2 bg-slate-800/90">
 
                                 {/* Road lines */}
                                 {[0, 1, 2, 3, 4].map((item) => (
@@ -260,7 +313,7 @@ function HeroSection() {
                                 ))}
 
 
-                                {/* Moving vehicle */}
+                                {/* Vehicle 1 */}
                                 <motion.div
                                     className="absolute bottom-12 left-5"
                                     animate={{
@@ -272,10 +325,13 @@ function HeroSection() {
                                         ease: "easeInOut",
                                     }}
                                 >
+
                                     <CarFront className="h-8 w-8 text-cyan-300" />
+
                                 </motion.div>
 
 
+                                {/* Vehicle 2 */}
                                 <motion.div
                                     className="absolute right-5 top-14"
                                     animate={{
@@ -287,25 +343,29 @@ function HeroSection() {
                                         ease: "easeInOut",
                                     }}
                                 >
+
                                     <CarFront className="h-8 w-8 text-blue-400" />
+
                                 </motion.div>
 
                             </div>
 
 
-                            {/* Information card */}
-                            <div className="absolute bottom-5 left-5 right-5 rounded-xl border border-white/10 bg-slate-950/80 p-4 backdrop-blur">
+                            {/* Purpose card */}
+                            <div className="absolute bottom-5 left-5 right-5 rounded-xl border border-white/10 bg-slate-950/90 p-4 backdrop-blur">
 
                                 <div className="flex items-center justify-between">
 
                                     <div>
+
                                         <p className="text-xs text-slate-500">
                                             System Purpose
                                         </p>
 
-                                        <p className="mt-1 text-sm font-medium">
+                                        <p className="mt-1 text-sm font-medium text-white">
                                             Proactive Traffic Management
                                         </p>
+
                                     </div>
 
 
@@ -336,13 +396,17 @@ function HeroSection() {
                     duration: 2,
                     repeat: Infinity,
                 }}
-                className="absolute bottom-6 left-1/2 -translate-x-1/2 text-slate-500"
+                className="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 text-slate-400"
+                aria-label="Scroll to insights"
             >
+
                 <ArrowDown className="h-6 w-6" />
+
             </motion.button>
 
         </section>
     );
 }
+
 
 export default HeroSection;

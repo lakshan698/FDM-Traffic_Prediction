@@ -1,23 +1,43 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import axios from "axios";
 import { motion } from "motion/react";
 
 import {
     Activity,
+    AlertCircle,
     CalendarDays,
+    CheckCircle2,
+    Clock3,
     CloudRain,
     Gauge,
     LoaderCircle,
+    LocateFixed,
     RotateCcw,
     Sparkles,
 } from "lucide-react";
 
 
-// Get backend URL from the Vite environment file
+// Backend URL from .env
 const API_URL = import.meta.env.VITE_API_URL;
 
 
-// Convert the numerical prediction into a simple traffic level
+// Supported weather conditions
+const WEATHER_OPTIONS = [
+    "clear",
+    "clouds",
+    "drizzle",
+    "fog",
+    "haze",
+    "mist",
+    "rain",
+    "smoke",
+    "snow",
+    "squall",
+    "thunderstorm",
+];
+
+
+// Convert predicted traffic volume into a simple traffic level
 function getTrafficLevel(volume) {
     if (volume < 2000) {
         return "Low Traffic";
@@ -35,7 +55,7 @@ function getTrafficLevel(volume) {
 }
 
 
-// Return the UI style for each traffic level
+// Return UI style based on traffic level
 function getTrafficLevelStyle(volume) {
     if (volume < 2000) {
         return "border-emerald-400/20 bg-emerald-400/10 text-emerald-300";
@@ -56,7 +76,7 @@ function getTrafficLevelStyle(volume) {
 // Give a simple operational recommendation
 function getRecommendation(volume) {
     if (volume < 2000) {
-        return "Low traffic is expected. This period may be suitable for low-impact road operations or maintenance.";
+        return "Low traffic is expected. This period may be suitable for normal operations or lower-impact road activities.";
     }
 
     if (volume < 4000) {
@@ -67,7 +87,31 @@ function getRecommendation(volume) {
         return "High traffic is expected. Authorities should prepare congestion-management measures.";
     }
 
-    return "Very high traffic is expected. Increased monitoring and traffic-control measures are recommended.";
+    return "Very high traffic is expected. Increased monitoring and stronger traffic-control measures are recommended.";
+}
+
+
+// Convert values such as 5 into 05
+function padNumber(value) {
+    return String(value).padStart(2, "0");
+}
+
+
+// Get the user's current local date and time
+function getCurrentDateAndTime() {
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = padNumber(now.getMonth() + 1);
+    const day = padNumber(now.getDate());
+
+    const hours = padNumber(now.getHours());
+    const minutes = padNumber(now.getMinutes());
+
+    return {
+        date: `${year}-${month}-${day}`,
+        time: `${hours}:${minutes}`,
+    };
 }
 
 
@@ -75,9 +119,15 @@ function PredictionSection({
     backendOnline,
     setBackendOnline,
 }) {
-    // Store all form values
+    // References used to open native calendar and time pickers
+    const dateInputRef = useRef(null);
+    const timeInputRef = useRef(null);
+
+
+    // Store form values
     const [form, setForm] = useState({
-        date_time: "",
+        date: "",
+        time: "",
         temperature: "",
         rain_1h: 0,
         snow_1h: 0,
@@ -87,19 +137,23 @@ function PredictionSection({
     });
 
 
-    // Store the prediction returned by the backend
+    // Store field-level validation errors
+    const [validationErrors, setValidationErrors] = useState({});
+
+
+    // Store prediction result
     const [prediction, setPrediction] = useState(null);
 
 
-    // Show loading state while waiting for the model
+    // Loading state
     const [loading, setLoading] = useState(false);
 
 
-    // Store prediction or connection errors
+    // General error message
     const [error, setError] = useState("");
 
 
-    // Update the correct form value
+    // Update input values
     const handleChange = (event) => {
         const {
             name,
@@ -108,21 +162,203 @@ function PredictionSection({
             checked,
         } = event.target;
 
+        const newValue =
+            type === "checkbox"
+                ? checked
+                : value;
+
+
         setForm((previous) => ({
             ...previous,
-
-            [name]:
-                type === "checkbox"
-                    ? checked
-                    : value,
+            [name]: newValue,
         }));
+
+
+        // Remove the validation error when user changes the field
+        setValidationErrors((previous) => ({
+            ...previous,
+            [name]: "",
+        }));
+
+
+        setError("");
     };
 
 
-    // Clear all input values and previous results
+    // Automatically use current local date and time
+    const handleUseCurrentDateTime = () => {
+        const current = getCurrentDateAndTime();
+
+        setForm((previous) => ({
+            ...previous,
+            date: current.date,
+            time: current.time,
+        }));
+
+
+        // Clear previous date/time errors
+        setValidationErrors((previous) => ({
+            ...previous,
+            date: "",
+            time: "",
+        }));
+
+
+        setError("");
+    };
+
+
+    // Open the native calendar picker
+    const openDatePicker = () => {
+        if (dateInputRef.current?.showPicker) {
+            dateInputRef.current.showPicker();
+        } else {
+            dateInputRef.current?.focus();
+        }
+    };
+
+
+    // Open the native time picker
+    const openTimePicker = () => {
+        if (timeInputRef.current?.showPicker) {
+            timeInputRef.current.showPicker();
+        } else {
+            timeInputRef.current?.focus();
+        }
+    };
+
+
+    // Validate all user inputs
+    const validateForm = () => {
+        const errors = {};
+
+
+        // Date validation
+        if (!form.date) {
+            errors.date = "Please select or enter a date.";
+        }
+
+
+        // Time validation
+        if (!form.time) {
+            errors.time = "Please select or enter a time.";
+        }
+
+
+        // Temperature validation
+        if (
+            form.temperature === "" ||
+            form.temperature === null
+        ) {
+            errors.temperature =
+                "Temperature is required.";
+        } else {
+            const temperature =
+                Number(form.temperature);
+
+            if (Number.isNaN(temperature)) {
+                errors.temperature =
+                    "Enter a valid temperature.";
+            } else if (
+                temperature < -50 ||
+                temperature > 55
+            ) {
+                errors.temperature =
+                    "Temperature must be between -50°C and 55°C.";
+            }
+        }
+
+
+        // Cloud coverage validation
+        if (
+            form.clouds_all === "" ||
+            form.clouds_all === null
+        ) {
+            errors.clouds_all =
+                "Cloud coverage is required.";
+        } else {
+            const clouds =
+                Number(form.clouds_all);
+
+            if (Number.isNaN(clouds)) {
+                errors.clouds_all =
+                    "Enter a valid cloud coverage value.";
+            } else if (
+                clouds < 0 ||
+                clouds > 100
+            ) {
+                errors.clouds_all =
+                    "Cloud coverage must be between 0% and 100%.";
+            }
+        }
+
+
+        // Rainfall validation
+        if (
+            form.rain_1h === "" ||
+            form.rain_1h === null
+        ) {
+            errors.rain_1h =
+                "Rainfall value is required.";
+        } else {
+            const rainfall =
+                Number(form.rain_1h);
+
+            if (Number.isNaN(rainfall)) {
+                errors.rain_1h =
+                    "Enter a valid rainfall value.";
+            } else if (rainfall < 0) {
+                errors.rain_1h =
+                    "Rainfall cannot be negative.";
+            }
+        }
+
+
+        // Snowfall validation
+        if (
+            form.snow_1h === "" ||
+            form.snow_1h === null
+        ) {
+            errors.snow_1h =
+                "Snowfall value is required.";
+        } else {
+            const snowfall =
+                Number(form.snow_1h);
+
+            if (Number.isNaN(snowfall)) {
+                errors.snow_1h =
+                    "Enter a valid snowfall value.";
+            } else if (snowfall < 0) {
+                errors.snow_1h =
+                    "Snowfall cannot be negative.";
+            }
+        }
+
+
+        // Weather validation
+        if (
+            !WEATHER_OPTIONS.includes(
+                form.weather_main
+            )
+        ) {
+            errors.weather_main =
+                "Please select a valid weather condition.";
+        }
+
+
+        setValidationErrors(errors);
+
+
+        // Return true only when there are no errors
+        return Object.keys(errors).length === 0;
+    };
+
+
+    // Reset all values and results
     const handleReset = () => {
         setForm({
-            date_time: "",
+            date: "",
+            time: "",
             temperature: "",
             rain_1h: 0,
             snow_1h: 0,
@@ -132,52 +368,76 @@ function PredictionSection({
         });
 
         setPrediction(null);
+        setValidationErrors({});
         setError("");
     };
 
 
-    // Send the user's values to the FastAPI backend
+    // Send prediction request
     const handleSubmit = async (event) => {
         event.preventDefault();
 
-        setLoading(true);
         setError("");
         setPrediction(null);
 
+
+        // Frontend validation
+        const isValid = validateForm();
+
+        if (!isValid) {
+            setError(
+                "Please correct the highlighted fields before generating a prediction."
+            );
+
+            return;
+        }
+
+
+        setLoading(true);
+
         try {
             // Convert Celsius into Kelvin
-            // because the training dataset used Kelvin
+            // because model training data used Kelvin
             const temperatureKelvin =
                 Number(form.temperature) + 273.15;
 
 
-            // Create the JSON body expected by the backend
+            // Combine date and time into backend datetime format
+            const selectedDateTime =
+                `${form.date}T${form.time}:00`;
+
+
+            // Build request body
             const requestData = {
-                date_time: form.date_time,
+                date_time: selectedDateTime,
 
                 temp: temperatureKelvin,
 
-                rain_1h: Number(form.rain_1h),
+                rain_1h:
+                    Number(form.rain_1h),
 
-                snow_1h: Number(form.snow_1h),
+                snow_1h:
+                    Number(form.snow_1h),
 
-                clouds_all: Number(form.clouds_all),
+                clouds_all:
+                    Number(form.clouds_all),
 
-                weather_main: form.weather_main,
+                weather_main:
+                    form.weather_main,
 
                 is_holiday:
                     form.is_holiday ? 1 : 0,
             };
 
 
-            // Send the request to the prediction endpoint
+            // Send validated input to FastAPI
             const response = await axios.post(
                 `${API_URL}/predict`,
                 requestData
             );
 
 
-            // Save the result returned by the model
+            // Save returned prediction
             setPrediction(response.data);
 
             setBackendOnline(true);
@@ -189,14 +449,23 @@ function PredictionSection({
             );
 
 
-            // The backend responded but rejected the request
-            if (err.response) {
+            // Backend Pydantic validation error
+            if (
+                err.response?.status === 422
+            ) {
                 setError(
-                    "Prediction failed. Please check the entered values."
+                    "The server rejected one or more input values. Please review the entered conditions."
                 );
             }
 
-            // The backend could not be reached
+            // Other backend error
+            else if (err.response) {
+                setError(
+                    "Prediction could not be generated. Please check the entered values."
+                );
+            }
+
+            // Backend connection error
             else {
                 setError(
                     "Cannot connect to the prediction server."
@@ -211,12 +480,27 @@ function PredictionSection({
     };
 
 
+    // Return input style based on validation state
+    const getInputClass = (fieldName) => {
+        const hasError =
+            validationErrors[fieldName];
+
+        return `
+      w-full rounded-xl border bg-slate-900/70
+      px-4 py-3 text-white outline-none transition
+      ${hasError
+                ? "border-red-400/70 focus:border-red-400"
+                : "border-white/10 focus:border-cyan-400/60"
+            }
+    `;
+    };
+
+
     return (
         <section
             id="prediction"
             className="relative py-24"
         >
-
             {/* Background glow */}
             <div className="absolute right-0 top-1/3 h-[500px] w-[500px] rounded-full bg-cyan-500/10 blur-3xl" />
 
@@ -242,6 +526,7 @@ function PredictionSection({
                         Live Prediction
                     </p>
 
+
                     <h2 className="mt-4 text-4xl font-bold sm:text-5xl">
                         Estimate upcoming
                         <span className="text-cyan-300">
@@ -249,17 +534,19 @@ function PredictionSection({
                         </span>
                     </h2>
 
+
                     <p className="mt-5 max-w-2xl text-base leading-7 text-slate-400">
-                        Enter the expected date, time and weather conditions.
-                        The trained machine learning model will estimate the
-                        expected hourly traffic volume.
+                        Select the date, time and expected weather
+                        conditions. The system validates all information
+                        before generating the traffic forecast.
                     </p>
+
                 </motion.div>
 
 
                 <div className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
 
-                    {/* Prediction input form */}
+                    {/* Input panel */}
                     <motion.div
                         initial={{
                             opacity: 0,
@@ -275,6 +562,7 @@ function PredictionSection({
                         className="rounded-3xl border border-white/10 bg-white/[0.05] p-7 shadow-2xl backdrop-blur-xl"
                     >
 
+                        {/* Form title */}
                         <div className="mb-7">
 
                             <div className="mb-2 flex items-center gap-2 text-cyan-300">
@@ -294,8 +582,8 @@ function PredictionSection({
 
 
                             <p className="mt-2 text-sm leading-6 text-slate-400">
-                                Provide the conditions for the period you want
-                                to analyse.
+                                Enter the expected conditions for the
+                                period you want to analyse.
                             </p>
 
                         </div>
@@ -303,32 +591,170 @@ function PredictionSection({
 
                         <form
                             onSubmit={handleSubmit}
+                            noValidate
                             className="grid gap-5 sm:grid-cols-2"
                         >
 
-                            {/* Date and time */}
-                            <label className="sm:col-span-2">
+                            {/* Use current date and time */}
+                            <div className="sm:col-span-2">
+
+                                <motion.button
+                                    whileHover={{
+                                        scale: 1.01,
+                                    }}
+                                    whileTap={{
+                                        scale: 0.98,
+                                    }}
+                                    type="button"
+                                    onClick={handleUseCurrentDateTime}
+                                    className="flex w-full items-center justify-between rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06] px-4 py-3 text-left transition hover:border-cyan-400/40 hover:bg-cyan-400/[0.1]"
+                                >
+
+                                    <div className="flex items-center gap-3">
+
+                                        <div className="rounded-lg bg-cyan-400/10 p-2">
+
+                                            <LocateFixed className="h-5 w-5 text-cyan-300" />
+
+                                        </div>
+
+
+                                        <div>
+
+                                            <p className="text-sm font-medium text-cyan-200">
+                                                Use Current Date & Time
+                                            </p>
+
+
+                                            <p className="mt-0.5 text-xs text-slate-500">
+                                                Automatically use your device's local date and time
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <span className="hidden rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs text-cyan-300 sm:block">
+                                        Use Now
+                                    </span>
+
+                                </motion.button>
+
+                            </div>
+
+
+                            {/* Date */}
+                            <label>
 
                                 <span className="mb-2 block text-sm text-slate-300">
-                                    Date & Time
+                                    Select Date *
                                 </span>
 
 
                                 <div className="relative">
 
-                                    <CalendarDays className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                                    {/* Click this icon to open calendar */}
+                                    <button
+                                        type="button"
+                                        onClick={openDatePicker}
+                                        className="absolute left-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-cyan-300 transition hover:bg-cyan-400/10"
+                                        aria-label="Open calendar"
+                                        title="Open calendar"
+                                    >
+
+                                        <CalendarDays className="h-5 w-5" />
+
+                                    </button>
 
 
+                                    {/* User can also type the date manually */}
                                     <input
-                                        type="datetime-local"
-                                        name="date_time"
-                                        value={form.date_time}
+                                        ref={dateInputRef}
+                                        type="date"
+                                        name="date"
+                                        value={form.date}
                                         onChange={handleChange}
-                                        required
-                                        className="w-full rounded-xl border border-white/10 bg-slate-900/70 py-3 pl-12 pr-4 outline-none transition focus:border-cyan-400/60"
+                                        className={`${getInputClass(
+                                            "date"
+                                        )} pl-12`}
                                     />
 
                                 </div>
+
+
+                                <p className="mt-1 text-xs text-slate-600">
+                                    Type manually or use the calendar.
+                                </p>
+
+
+                                {validationErrors.date && (
+                                    <p className="mt-2 flex items-center gap-1 text-xs text-red-300">
+
+                                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+
+                                        {validationErrors.date}
+
+                                    </p>
+                                )}
+
+                            </label>
+
+
+                            {/* Time */}
+                            <label>
+
+                                <span className="mb-2 block text-sm text-slate-300">
+                                    Select Time *
+                                </span>
+
+
+                                <div className="relative">
+
+                                    {/* Click this icon to open time picker */}
+                                    <button
+                                        type="button"
+                                        onClick={openTimePicker}
+                                        className="absolute left-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-cyan-300 transition hover:bg-cyan-400/10"
+                                        aria-label="Open time picker"
+                                        title="Open time picker"
+                                    >
+
+                                        <Clock3 className="h-5 w-5" />
+
+                                    </button>
+
+
+                                    {/* User can also type the time manually */}
+                                    <input
+                                        ref={timeInputRef}
+                                        type="time"
+                                        name="time"
+                                        value={form.time}
+                                        onChange={handleChange}
+                                        step="60"
+                                        className={`${getInputClass(
+                                            "time"
+                                        )} pl-12`}
+                                    />
+
+                                </div>
+
+
+                                <p className="mt-1 text-xs text-slate-600">
+                                    Type manually or use the clock.
+                                </p>
+
+
+                                {validationErrors.time && (
+                                    <p className="mt-2 flex items-center gap-1 text-xs text-red-300">
+
+                                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+
+                                        {validationErrors.time}
+
+                                    </p>
+                                )}
 
                             </label>
 
@@ -337,7 +763,7 @@ function PredictionSection({
                             <label>
 
                                 <span className="mb-2 block text-sm text-slate-300">
-                                    Temperature °C
+                                    Temperature °C *
                                 </span>
 
 
@@ -346,13 +772,28 @@ function PredictionSection({
                                     name="temperature"
                                     value={form.temperature}
                                     onChange={handleChange}
-                                    min="-50"
-                                    max="55"
                                     step="0.01"
-                                    required
                                     placeholder="e.g. 25"
-                                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 outline-none transition focus:border-cyan-400/60"
+                                    className={getInputClass(
+                                        "temperature"
+                                    )}
                                 />
+
+
+                                <p className="mt-1 text-xs text-slate-600">
+                                    Allowed range: -50°C to 55°C
+                                </p>
+
+
+                                {validationErrors.temperature && (
+                                    <p className="mt-2 flex items-center gap-1 text-xs text-red-300">
+
+                                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+
+                                        {validationErrors.temperature}
+
+                                    </p>
+                                )}
 
                             </label>
 
@@ -361,7 +802,7 @@ function PredictionSection({
                             <label>
 
                                 <span className="mb-2 block text-sm text-slate-300">
-                                    Cloud Coverage %
+                                    Cloud Coverage % *
                                 </span>
 
 
@@ -370,12 +811,27 @@ function PredictionSection({
                                     name="clouds_all"
                                     value={form.clouds_all}
                                     onChange={handleChange}
-                                    min="0"
-                                    max="100"
                                     step="1"
-                                    required
-                                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 outline-none transition focus:border-cyan-400/60"
+                                    className={getInputClass(
+                                        "clouds_all"
+                                    )}
                                 />
+
+
+                                <p className="mt-1 text-xs text-slate-600">
+                                    Allowed range: 0% to 100%
+                                </p>
+
+
+                                {validationErrors.clouds_all && (
+                                    <p className="mt-2 flex items-center gap-1 text-xs text-red-300">
+
+                                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+
+                                        {validationErrors.clouds_all}
+
+                                    </p>
+                                )}
 
                             </label>
 
@@ -393,10 +849,27 @@ function PredictionSection({
                                     name="rain_1h"
                                     value={form.rain_1h}
                                     onChange={handleChange}
-                                    min="0"
                                     step="0.01"
-                                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 outline-none transition focus:border-cyan-400/60"
+                                    className={getInputClass(
+                                        "rain_1h"
+                                    )}
                                 />
+
+
+                                <p className="mt-1 text-xs text-slate-600">
+                                    Must be 0 or greater
+                                </p>
+
+
+                                {validationErrors.rain_1h && (
+                                    <p className="mt-2 flex items-center gap-1 text-xs text-red-300">
+
+                                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+
+                                        {validationErrors.rain_1h}
+
+                                    </p>
+                                )}
 
                             </label>
 
@@ -414,10 +887,27 @@ function PredictionSection({
                                     name="snow_1h"
                                     value={form.snow_1h}
                                     onChange={handleChange}
-                                    min="0"
                                     step="0.01"
-                                    className="w-full rounded-xl border border-white/10 bg-slate-900/70 px-4 py-3 outline-none transition focus:border-cyan-400/60"
+                                    className={getInputClass(
+                                        "snow_1h"
+                                    )}
                                 />
+
+
+                                <p className="mt-1 text-xs text-slate-600">
+                                    Must be 0 or greater
+                                </p>
+
+
+                                {validationErrors.snow_1h && (
+                                    <p className="mt-2 flex items-center gap-1 text-xs text-red-300">
+
+                                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+
+                                        {validationErrors.snow_1h}
+
+                                    </p>
+                                )}
 
                             </label>
 
@@ -426,42 +916,87 @@ function PredictionSection({
                             <label className="sm:col-span-2">
 
                                 <span className="mb-2 block text-sm text-slate-300">
-                                    Weather Condition
+                                    Weather Condition *
                                 </span>
 
 
                                 <div className="relative">
 
-                                    <CloudRain className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
+                                    <CloudRain className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500" />
 
 
                                     <select
                                         name="weather_main"
                                         value={form.weather_main}
                                         onChange={handleChange}
-                                        className="w-full rounded-xl border border-white/10 bg-slate-900 py-3 pl-12 pr-4 outline-none transition focus:border-cyan-400/60"
+                                        className={`${getInputClass(
+                                            "weather_main"
+                                        )} pl-12`}
                                     >
-                                        <option value="clear">Clear</option>
-                                        <option value="clouds">Clouds</option>
-                                        <option value="drizzle">Drizzle</option>
-                                        <option value="fog">Fog</option>
-                                        <option value="haze">Haze</option>
-                                        <option value="mist">Mist</option>
-                                        <option value="rain">Rain</option>
-                                        <option value="smoke">Smoke</option>
-                                        <option value="snow">Snow</option>
-                                        <option value="squall">Squall</option>
+
+                                        <option value="clear">
+                                            Clear
+                                        </option>
+
+                                        <option value="clouds">
+                                            Clouds
+                                        </option>
+
+                                        <option value="drizzle">
+                                            Drizzle
+                                        </option>
+
+                                        <option value="fog">
+                                            Fog
+                                        </option>
+
+                                        <option value="haze">
+                                            Haze
+                                        </option>
+
+                                        <option value="mist">
+                                            Mist
+                                        </option>
+
+                                        <option value="rain">
+                                            Rain
+                                        </option>
+
+                                        <option value="smoke">
+                                            Smoke
+                                        </option>
+
+                                        <option value="snow">
+                                            Snow
+                                        </option>
+
+                                        <option value="squall">
+                                            Squall
+                                        </option>
+
                                         <option value="thunderstorm">
                                             Thunderstorm
                                         </option>
+
                                     </select>
 
                                 </div>
 
+
+                                {validationErrors.weather_main && (
+                                    <p className="mt-2 flex items-center gap-1 text-xs text-red-300">
+
+                                        <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+
+                                        {validationErrors.weather_main}
+
+                                    </p>
+                                )}
+
                             </label>
 
 
-                            {/* Holiday option */}
+                            {/* Public holiday */}
                             <label className="sm:col-span-2 flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-slate-900/50 px-4 py-4">
 
                                 <div>
@@ -470,8 +1005,9 @@ function PredictionSection({
                                         Public Holiday
                                     </p>
 
+
                                     <p className="text-xs text-slate-500">
-                                        Enable if the selected date is a holiday.
+                                        Enable if the selected date is a public holiday.
                                     </p>
 
                                 </div>
@@ -488,10 +1024,25 @@ function PredictionSection({
                             </label>
 
 
+                            {/* General validation / API error */}
+                            {error && (
+                                <div className="sm:col-span-2 flex items-start gap-3 rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-300">
+
+                                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+
+
+                                    <p>
+                                        {error}
+                                    </p>
+
+                                </div>
+                            )}
+
+
                             {/* Action buttons */}
                             <div className="sm:col-span-2 grid gap-3 sm:grid-cols-[1fr_auto]">
 
-                                {/* Predict button */}
+                                {/* Predict */}
                                 <motion.button
                                     whileHover={{
                                         scale: 1.015,
@@ -501,25 +1052,30 @@ function PredictionSection({
                                     }}
                                     type="submit"
                                     disabled={
-                                        loading || !backendOnline
+                                        loading ||
+                                        !backendOnline
                                     }
                                     className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-4 font-semibold text-slate-950 shadow-lg shadow-cyan-500/20 transition disabled:cursor-not-allowed disabled:opacity-50"
                                 >
+
                                     {loading ? (
                                         <>
                                             <LoaderCircle className="h-5 w-5 animate-spin" />
-                                            Predicting...
+
+                                            Validating & Predicting...
                                         </>
                                     ) : (
                                         <>
                                             <Gauge className="h-5 w-5" />
+
                                             Predict Traffic Volume
                                         </>
                                     )}
+
                                 </motion.button>
 
 
-                                {/* Reset button */}
+                                {/* Reset */}
                                 <motion.button
                                     whileHover={{
                                         scale: 1.03,
@@ -532,19 +1088,14 @@ function PredictionSection({
                                     disabled={loading}
                                     className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-4 font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
                                 >
+
                                     <RotateCcw className="h-5 w-5" />
+
                                     Reset
+
                                 </motion.button>
 
                             </div>
-
-
-                            {/* Error message */}
-                            {error && (
-                                <p className="sm:col-span-2 rounded-xl border border-red-400/20 bg-red-400/10 p-3 text-sm text-red-300">
-                                    {error}
-                                </p>
-                            )}
 
                         </form>
 
@@ -569,12 +1120,16 @@ function PredictionSection({
 
                         {!prediction ? (
 
-                            // Initial view before prediction
+                            // Before a prediction is generated
                             <div className="text-center">
 
                                 <motion.div
                                     animate={{
-                                        y: [0, -10, 0],
+                                        y: [
+                                            0,
+                                            -10,
+                                            0,
+                                        ],
                                     }}
                                     transition={{
                                         duration: 3,
@@ -582,7 +1137,9 @@ function PredictionSection({
                                     }}
                                     className="mx-auto mb-7 flex h-24 w-24 items-center justify-center rounded-3xl border border-cyan-400/20 bg-cyan-400/10"
                                 >
+
                                     <Activity className="h-11 w-11 text-cyan-300" />
+
                                 </motion.div>
 
 
@@ -592,38 +1149,41 @@ function PredictionSection({
 
 
                                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-slate-400">
-                                    Enter the expected conditions to generate an
-                                    AI-supported traffic volume estimate.
+                                    Enter valid traffic and weather conditions
+                                    to generate the expected traffic estimate.
                                 </p>
 
 
-                                {/* Show model availability */}
+                                {/* Prediction service status */}
                                 <div
                                     className={`mx-auto mt-7 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs ${backendOnline
-                                        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-                                        : "border-red-400/20 bg-red-400/10 text-red-300"
+                                            ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                                            : "border-red-400/20 bg-red-400/10 text-red-300"
                                         }`}
                                 >
-                                    <span
-                                        className={`h-2 w-2 rounded-full ${backendOnline
-                                            ? "bg-emerald-400"
-                                            : "bg-red-400"
-                                            }`}
-                                    />
+
+                                    {backendOnline ? (
+                                        <CheckCircle2 className="h-4 w-4" />
+                                    ) : (
+                                        <AlertCircle className="h-4 w-4" />
+                                    )}
+
 
                                     {backendOnline
-                                        ? "Prediction model available"
+                                        ? "Prediction service available"
                                         : "Prediction service unavailable"}
+
                                 </div>
 
                             </div>
 
                         ) : (
 
-                            // Show prediction result
+                            // After prediction
                             <motion.div
                                 key={
-                                    prediction.predicted_traffic_volume
+                                    prediction
+                                        .predicted_traffic_volume
                                 }
                                 initial={{
                                     opacity: 0,
@@ -641,7 +1201,7 @@ function PredictionSection({
                                 </p>
 
 
-                                {/* Main numerical prediction */}
+                                {/* Main traffic volume */}
                                 <motion.p
                                     initial={{
                                         y: 20,
@@ -651,9 +1211,11 @@ function PredictionSection({
                                     }}
                                     className="mt-5 text-7xl font-bold tracking-tight"
                                 >
+
                                     {prediction
                                         .predicted_traffic_volume
                                         .toLocaleString()}
+
                                 </motion.p>
 
 
@@ -662,15 +1224,19 @@ function PredictionSection({
                                 </p>
 
 
-                                {/* Traffic level */}
+                                {/* Simple traffic level */}
                                 <div
                                     className={`mt-5 inline-flex rounded-full border px-5 py-2 text-sm font-medium ${getTrafficLevelStyle(
-                                        prediction.predicted_traffic_volume
+                                        prediction
+                                            .predicted_traffic_volume
                                     )}`}
                                 >
+
                                     {getTrafficLevel(
-                                        prediction.predicted_traffic_volume
+                                        prediction
+                                            .predicted_traffic_volume
                                     )}
+
                                 </div>
 
 
@@ -683,15 +1249,15 @@ function PredictionSection({
 
 
                                     <p className="mt-3 text-sm leading-6 text-slate-300">
+
                                         {getRecommendation(
-                                            prediction.predicted_traffic_volume
+                                            prediction
+                                                .predicted_traffic_volume
                                         )}
+
                                     </p>
 
                                 </div>
-
-
-
 
                             </motion.div>
 
