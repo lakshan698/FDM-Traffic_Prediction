@@ -62,7 +62,7 @@ function HeroSection() {
 
 
             {/* Main dark overlay */}
-            <div className="absolute inset-0 bg-slate-950/5" />
+            <div className="absolute inset-0 bg-slate-950/35" />
 
             {/* Keep text readable */}
             <div className="absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-900/25 to-transparent" />
