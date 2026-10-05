@@ -161,7 +161,7 @@ function InsightsSection() {
                                 whileHover={{
                                     y: -6,
                                 }}
-                                className="rounded-3xl border border-white/10 bg-slate-900/60 p-6 backdrop-blur-xl"
+                                className="rounded-3xl border border-white/10 bg-slate-800/60 p-6 backdrop-blur-xl"
                             >
 
                                 <div className="flex items-center justify-between">
@@ -210,7 +210,7 @@ function InsightsSection() {
                         viewport={{
                             once: true,
                         }}
-                        className="rounded-3xl border border-white/10 bg-white/[0.04] p-7 backdrop-blur-xl"
+                        className="rounded-3xl border border-white/10 bg-white/[0.08] p-7 backdrop-blur-xl"
                     >
 
                         <div className="flex items-center justify-between">
@@ -258,7 +258,7 @@ function InsightsSection() {
                                     transition={{
                                         delay: index * 0.08,
                                     }}
-                                    className="grid gap-4 rounded-2xl border border-white/10 bg-slate-950/40 p-5 sm:grid-cols-[150px_1fr]"
+                                    className="grid gap-4 rounded-2xl border border-white/10 bg-slate-950/60 p-5 sm:grid-cols-[150px_1fr]"
                                 >
 
                                     <div>

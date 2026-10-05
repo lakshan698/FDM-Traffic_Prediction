@@ -61,17 +61,14 @@ function HeroSection() {
             </motion.div>
 
 
-            {/* Light dark overlay - keeps image visible */}
-            <div className="absolute inset-0 bg-slate-950/50" />
+            {/* Main dark overlay */}
+            <div className="absolute inset-0 bg-slate-950/5" />
 
+            {/* Keep text readable */}
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-900/25 to-transparent" />
 
-            {/* Darker only behind the text area */}
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-950/35 to-transparent" />
-
-
-            {/* Soft bottom fade into the next section */}
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-950/70" />
-
+            {/* Smooth transition */}
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900/65" />
             <div className="absolute inset-0 bg-cyan-950/5" />
 
 
