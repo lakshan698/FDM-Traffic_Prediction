@@ -918,7 +918,7 @@ function PredictionSection({
                                 />
 
                                 <p className="mt-1 text-xs text-slate-500">
-                                    Model-supported range: 0–100 mm/hour
+                                    Supported range: 0–100 mm/hour
                                 </p>
 
 
@@ -960,7 +960,7 @@ function PredictionSection({
                                 />
 
                                 <p className="mt-1 text-xs text-slate-500">
-                                    Model-supported range: 0–0.51 mm/hour
+                                    Supported range: 0–0.51 mm/hour
                                 </p>
 
 
