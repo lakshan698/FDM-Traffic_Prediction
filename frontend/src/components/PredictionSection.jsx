@@ -21,6 +21,20 @@ import {
 const API_URL = import.meta.env.VITE_API_URL;
 
 
+// Input limits based on the valid historical data range
+const MIN_TEMPERATURE = -50;
+const MAX_TEMPERATURE = 55;
+
+const MIN_CLOUD_COVERAGE = 0;
+const MAX_CLOUD_COVERAGE = 100;
+
+const MIN_RAINFALL = 0;
+const MAX_RAINFALL = 100;
+
+const MIN_SNOWFALL = 0;
+const MAX_SNOWFALL = 0.51;
+
+
 // Supported weather conditions
 const WEATHER_OPTIONS = [
     "clear",
@@ -138,19 +152,23 @@ function PredictionSection({
 
 
     // Store field-level validation errors
-    const [validationErrors, setValidationErrors] = useState({});
+    const [validationErrors, setValidationErrors] =
+        useState({});
 
 
     // Store prediction result
-    const [prediction, setPrediction] = useState(null);
+    const [prediction, setPrediction] =
+        useState(null);
 
 
     // Loading state
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] =
+        useState(false);
 
 
     // General error message
-    const [error, setError] = useState("");
+    const [error, setError] =
+        useState("");
 
 
     // Update input values
@@ -161,6 +179,7 @@ function PredictionSection({
             type,
             checked,
         } = event.target;
+
 
         const newValue =
             type === "checkbox"
@@ -174,7 +193,7 @@ function PredictionSection({
         }));
 
 
-        // Remove the validation error when user changes the field
+        // Clear field error while the user corrects it
         setValidationErrors((previous) => ({
             ...previous,
             [name]: "",
@@ -187,7 +206,9 @@ function PredictionSection({
 
     // Automatically use current local date and time
     const handleUseCurrentDateTime = () => {
-        const current = getCurrentDateAndTime();
+        const current =
+            getCurrentDateAndTime();
+
 
         setForm((previous) => ({
             ...previous,
@@ -196,7 +217,6 @@ function PredictionSection({
         }));
 
 
-        // Clear previous date/time errors
         setValidationErrors((previous) => ({
             ...previous,
             date: "",
@@ -208,7 +228,7 @@ function PredictionSection({
     };
 
 
-    // Open the native calendar picker
+    // Open native calendar picker
     const openDatePicker = () => {
         if (dateInputRef.current?.showPicker) {
             dateInputRef.current.showPicker();
@@ -218,7 +238,7 @@ function PredictionSection({
     };
 
 
-    // Open the native time picker
+    // Open native time picker
     const openTimePicker = () => {
         if (timeInputRef.current?.showPicker) {
             timeInputRef.current.showPicker();
@@ -235,13 +255,15 @@ function PredictionSection({
 
         // Date validation
         if (!form.date) {
-            errors.date = "Please select or enter a date.";
+            errors.date =
+                "Please select or enter a date.";
         }
 
 
         // Time validation
         if (!form.time) {
-            errors.time = "Please select or enter a time.";
+            errors.time =
+                "Please select or enter a time.";
         }
 
 
@@ -256,15 +278,16 @@ function PredictionSection({
             const temperature =
                 Number(form.temperature);
 
+
             if (Number.isNaN(temperature)) {
                 errors.temperature =
                     "Enter a valid temperature.";
             } else if (
-                temperature < -50 ||
-                temperature > 55
+                temperature < MIN_TEMPERATURE ||
+                temperature > MAX_TEMPERATURE
             ) {
                 errors.temperature =
-                    "Temperature must be between -50°C and 55°C.";
+                    `Temperature must be between ${MIN_TEMPERATURE}°C and ${MAX_TEMPERATURE}°C.`;
             }
         }
 
@@ -280,12 +303,13 @@ function PredictionSection({
             const clouds =
                 Number(form.clouds_all);
 
+
             if (Number.isNaN(clouds)) {
                 errors.clouds_all =
                     "Enter a valid cloud coverage value.";
             } else if (
-                clouds < 0 ||
-                clouds > 100
+                clouds < MIN_CLOUD_COVERAGE ||
+                clouds > MAX_CLOUD_COVERAGE
             ) {
                 errors.clouds_all =
                     "Cloud coverage must be between 0% and 100%.";
@@ -301,15 +325,17 @@ function PredictionSection({
             errors.rain_1h =
                 "Rainfall value is required.";
         } else {
-            const rainfall =
-                Number(form.rain_1h);
+            const rainfall = Number(form.rain_1h);
 
             if (Number.isNaN(rainfall)) {
                 errors.rain_1h =
-                    "Enter a valid rainfall value.";
-            } else if (rainfall < 0) {
+                    "Please enter a valid hourly rainfall value.";
+            } else if (rainfall < MIN_RAINFALL) {
                 errors.rain_1h =
                     "Rainfall cannot be negative.";
+            } else if (rainfall > MAX_RAINFALL) {
+                errors.rain_1h =
+                    "Please enter an hourly rainfall value between 0 and 100 mm. Higher values are outside the range supported by this prediction model.";
             }
         }
 
@@ -322,15 +348,17 @@ function PredictionSection({
             errors.snow_1h =
                 "Snowfall value is required.";
         } else {
-            const snowfall =
-                Number(form.snow_1h);
+            const snowfall = Number(form.snow_1h);
 
             if (Number.isNaN(snowfall)) {
                 errors.snow_1h =
-                    "Enter a valid snowfall value.";
-            } else if (snowfall < 0) {
+                    "Please enter a valid hourly snowfall value.";
+            } else if (snowfall < MIN_SNOWFALL) {
                 errors.snow_1h =
                     "Snowfall cannot be negative.";
+            } else if (snowfall > MAX_SNOWFALL) {
+                errors.snow_1h =
+                    "Please enter snowfall between 0 and 0.51 mm per hour. Higher values were not represented in the training data.";
             }
         }
 
@@ -349,7 +377,7 @@ function PredictionSection({
         setValidationErrors(errors);
 
 
-        // Return true only when there are no errors
+        // Valid only when there are no errors
         return Object.keys(errors).length === 0;
     };
 
@@ -381,8 +409,10 @@ function PredictionSection({
         setPrediction(null);
 
 
-        // Frontend validation
-        const isValid = validateForm();
+        // First layer: frontend validation
+        const isValid =
+            validateForm();
+
 
         if (!isValid) {
             setError(
@@ -395,6 +425,7 @@ function PredictionSection({
 
         setLoading(true);
 
+
         try {
             // Convert Celsius into Kelvin
             // because model training data used Kelvin
@@ -402,7 +433,7 @@ function PredictionSection({
                 Number(form.temperature) + 273.15;
 
 
-            // Combine date and time into backend datetime format
+            // Combine selected date and time
             const selectedDateTime =
                 `${form.date}T${form.time}:00`;
 
@@ -430,14 +461,14 @@ function PredictionSection({
             };
 
 
-            // Send validated input to FastAPI
+            // Send validated values to FastAPI
             const response = await axios.post(
                 `${API_URL}/predict`,
                 requestData
             );
 
 
-            // Save returned prediction
+            // Store prediction result
             setPrediction(response.data);
 
             setBackendOnline(true);
@@ -480,13 +511,13 @@ function PredictionSection({
     };
 
 
-    // Return input style based on validation state
+    // Input style changes when validation fails
     const getInputClass = (fieldName) => {
         const hasError =
             validationErrors[fieldName];
 
         return `
-      w-full rounded-xl border bg-slate-900/70
+      w-full rounded-xl border bg-slate-800/70
       px-4 py-3 text-white outline-none transition
       ${hasError
                 ? "border-red-400/70 focus:border-red-400"
@@ -501,6 +532,7 @@ function PredictionSection({
             id="prediction"
             className="relative py-24"
         >
+
             {/* Background glow */}
             <div className="absolute right-0 top-1/3 h-[500px] w-[500px] rounded-full bg-cyan-500/10 blur-3xl" />
 
@@ -522,16 +554,20 @@ function PredictionSection({
                     }}
                     className="mb-12 max-w-3xl"
                 >
+
                     <p className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-300">
                         Live Prediction
                     </p>
 
 
                     <h2 className="mt-4 text-4xl font-bold sm:text-5xl">
+
                         Estimate upcoming
+
                         <span className="text-cyan-300">
                             {" "}traffic demand
                         </span>
+
                     </h2>
 
 
@@ -559,7 +595,7 @@ function PredictionSection({
                         viewport={{
                             once: true,
                         }}
-                        className="rounded-3xl border border-white/10 bg-white/[0.05] p-7 shadow-2xl backdrop-blur-xl"
+                        className="rounded-3xl border border-white/10 bg-white/[0.06] p-7 shadow-2xl backdrop-blur-xl"
                     >
 
                         {/* Form title */}
@@ -595,7 +631,7 @@ function PredictionSection({
                             className="grid gap-5 sm:grid-cols-2"
                         >
 
-                            {/* Use current date and time */}
+                            {/* Current date and time */}
                             <div className="sm:col-span-2">
 
                                 <motion.button
@@ -606,7 +642,9 @@ function PredictionSection({
                                         scale: 0.98,
                                     }}
                                     type="button"
-                                    onClick={handleUseCurrentDateTime}
+                                    onClick={
+                                        handleUseCurrentDateTime
+                                    }
                                     className="flex w-full items-center justify-between rounded-xl border border-cyan-400/20 bg-cyan-400/[0.06] px-4 py-3 text-left transition hover:border-cyan-400/40 hover:bg-cyan-400/[0.1]"
                                 >
 
@@ -654,10 +692,11 @@ function PredictionSection({
 
                                 <div className="relative">
 
-                                    {/* Click this icon to open calendar */}
                                     <button
                                         type="button"
-                                        onClick={openDatePicker}
+                                        onClick={
+                                            openDatePicker
+                                        }
                                         className="absolute left-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-cyan-300 transition hover:bg-cyan-400/10"
                                         aria-label="Open calendar"
                                         title="Open calendar"
@@ -668,7 +707,6 @@ function PredictionSection({
                                     </button>
 
 
-                                    {/* User can also type the date manually */}
                                     <input
                                         ref={dateInputRef}
                                         type="date"
@@ -683,7 +721,7 @@ function PredictionSection({
                                 </div>
 
 
-                                <p className="mt-1 text-xs text-slate-600">
+                                <p className="mt-1 text-xs text-slate-500">
                                     Type manually or use the calendar.
                                 </p>
 
@@ -711,10 +749,11 @@ function PredictionSection({
 
                                 <div className="relative">
 
-                                    {/* Click this icon to open time picker */}
                                     <button
                                         type="button"
-                                        onClick={openTimePicker}
+                                        onClick={
+                                            openTimePicker
+                                        }
                                         className="absolute left-3 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-cyan-300 transition hover:bg-cyan-400/10"
                                         aria-label="Open time picker"
                                         title="Open time picker"
@@ -725,7 +764,6 @@ function PredictionSection({
                                     </button>
 
 
-                                    {/* User can also type the time manually */}
                                     <input
                                         ref={timeInputRef}
                                         type="time"
@@ -741,7 +779,7 @@ function PredictionSection({
                                 </div>
 
 
-                                <p className="mt-1 text-xs text-slate-600">
+                                <p className="mt-1 text-xs text-slate-500">
                                     Type manually or use the clock.
                                 </p>
 
@@ -770,18 +808,30 @@ function PredictionSection({
                                 <input
                                     type="number"
                                     name="temperature"
-                                    value={form.temperature}
-                                    onChange={handleChange}
+                                    value={
+                                        form.temperature
+                                    }
+                                    onChange={
+                                        handleChange
+                                    }
+                                    min={
+                                        MIN_TEMPERATURE
+                                    }
+                                    max={
+                                        MAX_TEMPERATURE
+                                    }
                                     step="0.01"
                                     placeholder="e.g. 25"
-                                    className={getInputClass(
-                                        "temperature"
-                                    )}
+                                    className={
+                                        getInputClass(
+                                            "temperature"
+                                        )
+                                    }
                                 />
 
 
-                                <p className="mt-1 text-xs text-slate-600">
-                                    Allowed range: -50°C to 55°C
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Allowed: -50°C to 55°C
                                 </p>
 
 
@@ -809,17 +859,29 @@ function PredictionSection({
                                 <input
                                     type="number"
                                     name="clouds_all"
-                                    value={form.clouds_all}
-                                    onChange={handleChange}
+                                    value={
+                                        form.clouds_all
+                                    }
+                                    onChange={
+                                        handleChange
+                                    }
+                                    min={
+                                        MIN_CLOUD_COVERAGE
+                                    }
+                                    max={
+                                        MAX_CLOUD_COVERAGE
+                                    }
                                     step="1"
-                                    className={getInputClass(
-                                        "clouds_all"
-                                    )}
+                                    className={
+                                        getInputClass(
+                                            "clouds_all"
+                                        )
+                                    }
                                 />
 
 
-                                <p className="mt-1 text-xs text-slate-600">
-                                    Allowed range: 0% to 100%
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Allowed: 0% to 100%
                                 </p>
 
 
@@ -840,7 +902,7 @@ function PredictionSection({
                             <label>
 
                                 <span className="mb-2 block text-sm text-slate-300">
-                                    Rainfall (1h)
+                                    Rainfall (1h) *
                                 </span>
 
 
@@ -849,15 +911,19 @@ function PredictionSection({
                                     name="rain_1h"
                                     value={form.rain_1h}
                                     onChange={handleChange}
+                                    min={MIN_RAINFALL}
+                                    max={MAX_RAINFALL}
                                     step="0.01"
-                                    className={getInputClass(
-                                        "rain_1h"
-                                    )}
+                                    className={getInputClass("rain_1h")}
                                 />
 
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Model-supported range: 0–100 mm/hour
+                                </p>
 
-                                <p className="mt-1 text-xs text-slate-600">
-                                    Must be 0 or greater
+
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Allowed: 0 to 55.63 mm/hour
                                 </p>
 
 
@@ -878,7 +944,7 @@ function PredictionSection({
                             <label>
 
                                 <span className="mb-2 block text-sm text-slate-300">
-                                    Snowfall (1h)
+                                    Snowfall (1h) *
                                 </span>
 
 
@@ -887,15 +953,19 @@ function PredictionSection({
                                     name="snow_1h"
                                     value={form.snow_1h}
                                     onChange={handleChange}
+                                    min={MIN_SNOWFALL}
+                                    max={MAX_SNOWFALL}
                                     step="0.01"
-                                    className={getInputClass(
-                                        "snow_1h"
-                                    )}
+                                    className={getInputClass("snow_1h")}
                                 />
 
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Model-supported range: 0–0.51 mm/hour
+                                </p>
 
-                                <p className="mt-1 text-xs text-slate-600">
-                                    Must be 0 or greater
+
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Allowed: 0 to 0.51 mm/hour
                                 </p>
 
 
@@ -912,7 +982,7 @@ function PredictionSection({
                             </label>
 
 
-                            {/* Weather condition */}
+                            {/* Weather */}
                             <label className="sm:col-span-2">
 
                                 <span className="mb-2 block text-sm text-slate-300">
@@ -927,8 +997,12 @@ function PredictionSection({
 
                                     <select
                                         name="weather_main"
-                                        value={form.weather_main}
-                                        onChange={handleChange}
+                                        value={
+                                            form.weather_main
+                                        }
+                                        onChange={
+                                            handleChange
+                                        }
                                         className={`${getInputClass(
                                             "weather_main"
                                         )} pl-12`}
@@ -997,7 +1071,7 @@ function PredictionSection({
 
 
                             {/* Public holiday */}
-                            <label className="sm:col-span-2 flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-slate-900/50 px-4 py-4">
+                            <label className="sm:col-span-2 flex cursor-pointer items-center justify-between rounded-xl border border-white/10 bg-slate-800/50 px-4 py-4">
 
                                 <div>
 
@@ -1016,15 +1090,19 @@ function PredictionSection({
                                 <input
                                     type="checkbox"
                                     name="is_holiday"
-                                    checked={form.is_holiday}
-                                    onChange={handleChange}
+                                    checked={
+                                        form.is_holiday
+                                    }
+                                    onChange={
+                                        handleChange
+                                    }
                                     className="h-5 w-5 accent-cyan-400"
                                 />
 
                             </label>
 
 
-                            {/* General validation / API error */}
+                            {/* General validation/API error */}
                             {error && (
                                 <div className="sm:col-span-2 flex items-start gap-3 rounded-xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-300">
 
@@ -1084,8 +1162,12 @@ function PredictionSection({
                                         scale: 0.97,
                                     }}
                                     type="button"
-                                    onClick={handleReset}
-                                    disabled={loading}
+                                    onClick={
+                                        handleReset
+                                    }
+                                    disabled={
+                                        loading
+                                    }
                                     className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-4 font-medium text-slate-300 transition hover:bg-white/10 hover:text-white disabled:opacity-50"
                                 >
 
@@ -1120,7 +1202,7 @@ function PredictionSection({
 
                         {!prediction ? (
 
-                            // Before a prediction is generated
+                            // Before prediction
                             <div className="text-center">
 
                                 <motion.div
@@ -1154,11 +1236,11 @@ function PredictionSection({
                                 </p>
 
 
-                                {/* Prediction service status */}
+                                {/* Service status */}
                                 <div
                                     className={`mx-auto mt-7 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs ${backendOnline
-                                            ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
-                                            : "border-red-400/20 bg-red-400/10 text-red-300"
+                                        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-300"
+                                        : "border-red-400/20 bg-red-400/10 text-red-300"
                                         }`}
                                 >
 
@@ -1201,7 +1283,7 @@ function PredictionSection({
                                 </p>
 
 
-                                {/* Main traffic volume */}
+                                {/* Traffic volume */}
                                 <motion.p
                                     initial={{
                                         y: 20,
@@ -1224,7 +1306,7 @@ function PredictionSection({
                                 </p>
 
 
-                                {/* Simple traffic level */}
+                                {/* Traffic category */}
                                 <div
                                     className={`mt-5 inline-flex rounded-full border px-5 py-2 text-sm font-medium ${getTrafficLevelStyle(
                                         prediction
@@ -1240,7 +1322,7 @@ function PredictionSection({
                                 </div>
 
 
-                                {/* Operational recommendation */}
+                                {/* Recommendation */}
                                 <div className="mx-auto mt-8 max-w-md rounded-2xl border border-cyan-400/10 bg-cyan-400/[0.05] p-5 text-left">
 
                                     <p className="text-xs font-semibold uppercase tracking-[0.15em] text-cyan-300">
